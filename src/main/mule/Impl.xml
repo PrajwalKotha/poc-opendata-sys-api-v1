@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="ImplFlow" doc:id="9004c1af-b1bc-4456-a0b7-8356078148d6" >
+		<logger level="INFO" doc:name="Logger" doc:id="56836a4c-08aa-4628-8344-c09594f50469" message="calling openData system"/>
+		<http:request method="${OpenData.method}" doc:name="Request" doc:id="fcee9ec6-b7da-4973-890c-c9ddfe844b79" url="${OpenData.url}" outputMimeType="application/csv">
+			<http:body ><![CDATA[#[""]]]></http:body>
+		</http:request>
+		<set-variable value="#[output application/java --- sizeOf(payload)]" doc:name="records_count" doc:id="b39ea336-5ad1-4bf6-aea7-e18d3606633d" variableName="records_count"/>
+		<logger level="INFO" doc:name="Logger" doc:id="0cc8878f-8f9e-4fac-91c0-9429d684e469" message="Recieved the data from openData - #[vars.records_count]"/>
+		<set-payload value="#[%dw 2.0&#10;import * from dw::core::Arrays&#10;output application/json&#10;---&#10;(payload divideBy vars.pagesize)]" doc:name="Set Payload" doc:id="43ec1ee4-b760-44cb-bb96-eb3023d47cb0" />
+		<set-variable value="#[output application/java --- sizeOf(payload)]" doc:name="Set Variable" doc:id="30f26656-3a46-4c85-b863-880ffb1f44e7" variableName="totalPages"/>
+		<logger level="INFO" doc:name="Logger" doc:id="db22c1bb-6847-451f-a279-0078e5242df1" message="Number of pages - #[sizeOf(payload)]"/>
+		<choice doc:name="Choice" doc:id="db3e0738-ee20-4b20-aa8a-a53486a1675e" >
+			<when expression="#[vars.totalPages &gt;= vars.pageNumber]">
+				<set-payload value="#[output application/json --- payload[((vars.pageNumber as Number)-1)]]" doc:name="Set Payload" doc:id="12ac209c-f0d8-4e38-9e6e-860c9601e82f" />
+				<logger level="INFO" doc:name="Logger" doc:id="48b9af60-586c-4b21-a6ec-416d18ab5be4" message="responded back for the page - #[vars.pageNumber]"/>
+			</when>
+			<otherwise >
+				<raise-error doc:name="Raise error" doc:id="dd509e49-f87a-4dfc-a78d-77221add3c1e" type="PAGE:NOT_FOUND" description="Requested Page Not Found."/>
+			</otherwise>
+		</choice>
+		<set-payload value='#[output application/json&#10;---&#10;{&#10;	"data" : payload,&#10;	"nextPage" : if(vars.totalPages &gt; vars.pageNumber){&#10;		url: "http://" ++ p("http.host") ++ ":" ++ p("http.port") ++ p("http.basepath") ++ "/v1/covid?pageSize=" ++ vars.pagesize ++ "&amp;pageNumber=" ++ vars.pageNumber+1,&#10;		totalPages: vars.totalPages&#10;	}&#10;	else null&#10;}]' doc:name="Set Payload" doc:id="ef2a5dcc-cdc6-463f-bda6-272229463b1a" />
+	</flow>
+</mule>

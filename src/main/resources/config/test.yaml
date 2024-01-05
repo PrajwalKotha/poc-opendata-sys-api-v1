@@ -1,0 +1,9 @@
+http:
+  host: "localhost"
+  port: "8082"
+  basepath: "/sys"
+  path: "/v1/*"
+
+OpenData:
+  url: "https://opendata.ecdc.europa.eu/covid19/casedistribution/csv/data.csv"
+  method: "GET"
